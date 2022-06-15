@@ -14,6 +14,7 @@ import com.google.common.collect.Maps;
 import com.pamirs.takin.cloud.entity.domain.vo.report.SceneTaskNotifyParam;
 import io.shulie.takin.adapter.api.model.common.RuleBean;
 import io.shulie.takin.cloud.biz.cloudserver.SceneManageDTOConvert;
+import io.shulie.takin.cloud.biz.config.AppConfig;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneSlaRefOutput;
 import io.shulie.takin.cloud.biz.service.engine.EnginePluginFilesService;
@@ -35,7 +36,6 @@ import io.shulie.takin.eventcenter.annotation.IntrestFor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -56,10 +56,8 @@ public class SceneTaskEventService {
     private StringRedisTemplate stringRedisTemplate;
     @Resource
     private EnginePluginFilesService enginePluginFilesService;
-    @Value("${data.path}")
-    private String nfsDir;
-    @Value("${script.path}")
-    private String scriptPath;
+    @Resource
+    private AppConfig appConfig;
 
     @IntrestFor(event = "failed")
     public void failed(Event event) {
@@ -141,13 +139,14 @@ public class SceneTaskEventService {
         scheduleStartRequest.setTryRun(scene.isTryRun());
 
         List<ScheduleStartRequestExt.DataFile> dataFileList = new ArrayList<>();
+
         scene.getUploadFile().forEach(file -> {
             if (file.getFileType() == 0) {
-                scheduleStartRequest.setScriptPath(reWritePathIfNecessary(file.getUploadPath()));
+                scheduleStartRequest.setScriptPath(appConfig.reWritePathByNfsRelativePath(file.getUploadPath(), false));
             } else {
                 ScheduleStartRequestExt.DataFile dataFile = new ScheduleStartRequestExt.DataFile();
                 dataFile.setName(file.getFileName());
-                dataFile.setPath(reWritePathIfNecessary(file.getUploadPath()));
+                dataFile.setPath(appConfig.reWritePathByNfsRelativePath(file.getUploadPath(), false));
                 dataFile.setSplit(file.getIsSplit() != null && file.getIsSplit() == 1);
                 dataFile.setOrdered(file.getIsOrderSplit() != null && file.getIsOrderSplit() == 1);
                 dataFile.setRefId(file.getId());
@@ -267,18 +266,4 @@ public class SceneTaskEventService {
     }
 
     private static final List<String> NO_EXE_NODE_REF = Arrays.asList("0f1a197a2040e645dcdb4dfff8a3f960", "all");
-
-    private String reWritePathIfNecessary(String filePath) {
-        String prefix = scriptPath.replaceAll(nfsDir, "");
-        if (StringUtils.isBlank(prefix)) {
-            return filePath;
-        }
-        if (prefix.startsWith("/")) {
-            prefix = prefix.substring(1);
-        }
-        if (!prefix.endsWith("/")) {
-            prefix += "/";
-        }
-        return prefix + filePath;
-    }
 }

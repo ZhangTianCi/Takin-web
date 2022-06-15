@@ -45,6 +45,7 @@ import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageWrapperR
 import io.shulie.takin.adapter.api.model.request.scenemanage.SceneScriptRefOpen;
 import io.shulie.takin.adapter.api.model.request.scenemanage.SceneStartPreCheckReq;
 import io.shulie.takin.adapter.api.model.request.scenemanage.ScriptCheckAndUpdateReq;
+import io.shulie.takin.adapter.api.model.request.scenemanage.ScriptCheckAndUpdateReq.EnginePlugin;
 import io.shulie.takin.adapter.api.model.request.scenetask.SceneStartCheckResp;
 import io.shulie.takin.adapter.api.model.response.scenemanage.SceneManageListResp;
 import io.shulie.takin.adapter.api.model.response.scenemanage.SceneManageWrapperResp;
@@ -52,12 +53,15 @@ import io.shulie.takin.adapter.api.model.response.scenemanage.ScriptCheckResp;
 import io.shulie.takin.adapter.api.model.response.strategy.StrategyResp;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.web.biz.pojo.input.scenemanage.SceneManageListOutput;
+import io.shulie.takin.web.biz.pojo.request.filemanage.ScriptAndActivityVerifyRequest;
 import io.shulie.takin.web.biz.pojo.request.scenemanage.SceneSchedulerTaskCreateRequest;
 import io.shulie.takin.web.biz.pojo.request.scenemanage.SceneSchedulerTaskUpdateRequest;
+import io.shulie.takin.web.biz.pojo.response.filemanage.FileManageResponse;
 import io.shulie.takin.web.biz.pojo.response.scenemanage.SceneDetailResponse;
 import io.shulie.takin.web.biz.pojo.response.scenemanage.ScenePositionPointResponse;
 import io.shulie.takin.web.biz.pojo.response.scenemanage.SceneSchedulerTaskResponse;
 import io.shulie.takin.web.biz.pojo.response.scenemanage.SceneTagRefResponse;
+import io.shulie.takin.web.biz.pojo.response.scriptmanage.PluginConfigDetailResponse;
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.ScriptManageDeployDetailResponse;
 import io.shulie.takin.web.biz.pojo.response.tagmanage.TagManageResponse;
 import io.shulie.takin.web.biz.service.scene.ApplicationBusinessActivityService;
@@ -398,8 +402,12 @@ public class SceneManageServiceImpl implements SceneManageService {
 
         // 在上传文件时已经校验脚本和业务活动的关联关系，此处不再校验
         if (ScriptTypeEnum.JMETER.getCode().equals(dto.getScriptType())) {
-            ScriptCheckDTO checkDTO = this.checkScriptAndActivity(dto.getScriptType(), true, businessActivityList,
-                execList, scriptManageDeployDetail.getScriptVersion());
+            ScriptAndActivityVerifyRequest param = ScriptAndActivityVerifyRequest.builder()
+                .isPressure(dto.isPressure()).sceneId(dto.getId())
+                .scriptType(dto.getScriptType()).scriptList(execList)
+                .absolutePath(true).businessActivityList(businessActivityList)
+                .deployDetail(scriptManageDeployDetail).version(scriptManageDeployDetail.getScriptVersion()).build();
+            ScriptCheckDTO checkDTO = this.checkScriptAndActivity(param);
             if (StringUtils.isNoneBlank(checkDTO.getErrmsg())) {
                 throw new TakinWebException(TakinWebExceptionEnum.ERROR_COMMON, checkDTO.getErrmsg());
             }
@@ -549,9 +557,13 @@ public class SceneManageServiceImpl implements SceneManageService {
             List<SceneBusinessActivityRef> businessActivityList = Lists.newArrayList();
             sceneData.getBusinessActivityConfig().forEach(
                 data -> businessActivityList.add(buildSceneBusinessActivityRef(data)));
-            if (0 == scriptType) {
-                dto = checkScriptAndActivity(scriptType, sceneData.getIsAbsoluteScriptPath(),
-                    businessActivityList, execList, null);
+            if (ScriptTypeEnum.JMETER.getCode().equals(scriptType)) {
+                ScriptAndActivityVerifyRequest param = ScriptAndActivityVerifyRequest.builder()
+                    .isPressure(true).scriptType(scriptType).scriptList(execList).sceneId(sceneData.getId())
+                    .absolutePath(sceneData.getIsAbsoluteScriptPath())
+                    .businessActivityList(businessActivityList)
+                    .deployDetail(scriptManageService.getScriptManageDeployDetail(sceneData.getScriptId())).build();
+                dto = checkScriptAndActivity(param);
             }
         } catch (ApiException apiException) {
             dto.setMatchActivity(false);
@@ -619,14 +631,11 @@ public class SceneManageServiceImpl implements SceneManageService {
     /**
      * 检查脚本和活动
      *
-     * @param scriptType           脚本类型
-     * @param absolutePath         绝对路径
-     * @param businessActivityList 业务活动列表
-     * @param scriptList           脚本列表
+     * @param verifyParam           校验请求
      * @return dto
      */
-    private ScriptCheckDTO checkScriptAndActivity(Integer scriptType, boolean absolutePath,
-        List<SceneBusinessActivityRef> businessActivityList, List<SceneScriptRefOpen> scriptList, Integer version) {
+    private ScriptCheckDTO checkScriptAndActivity(ScriptAndActivityVerifyRequest verifyParam) {
+        Integer scriptType = verifyParam.getScriptType();
         ScriptCheckDTO dto = new ScriptCheckDTO();
         if (scriptType == null) {
             return new ScriptCheckDTO(false, false, "无脚本文件");
@@ -639,14 +648,10 @@ public class SceneManageServiceImpl implements SceneManageService {
             return new ScriptCheckDTO();
         }
 
-        SceneScriptRefOpen sceneScriptRef = scriptList.get(0);
+        List<SceneBusinessActivityRef> businessActivityList = verifyParam.getBusinessActivityList();
 
-        ScriptCheckAndUpdateReq scriptCheckAndUpdateReq = new ScriptCheckAndUpdateReq();
-        List<String> requestUrl = new ArrayList<>();
-        scriptCheckAndUpdateReq.setAbsolutePath(absolutePath);
-        scriptCheckAndUpdateReq.setRequest(requestUrl);
-        scriptCheckAndUpdateReq.setUploadPath(sceneScriptRef.getUploadPath());
-        if (version != null) {scriptCheckAndUpdateReq.setVersion(version);}
+        ScriptCheckAndUpdateReq request = buildVerifyRequest(verifyParam);
+        List<String> requestUrl = request.getRequest();
 
         List<Long> businessActivityIds = businessActivityList.stream().map(SceneBusinessActivityRef::getBusinessActivityId).distinct().collect(
             Collectors.toList());
@@ -672,16 +677,15 @@ public class SceneManageServiceImpl implements SceneManageService {
             data.setBindRef(convertUrl);
             requestUrl.add(convertUrl);
         });
-
-        ResponseResult<ScriptCheckResp> scriptCheckResp = sceneManageApi.checkAndUpdateScript(scriptCheckAndUpdateReq);
+        ResponseResult<ScriptCheckResp> scriptCheckResp = sceneManageApi.checkAndUpdateScript(request);
         if (scriptCheckResp == null || !scriptCheckResp.getSuccess()) {
-            log.error("cloud检查并更新脚本出错：{}", sceneScriptRef.getUploadPath());
-            dto.setErrmsg(String.format("|cloud检查并更新【%s】脚本异常,异常内容【%s】", sceneScriptRef.getUploadPath(), scriptCheckResp.getError().getMsg()));
+            log.error("cloud检查并更新脚本出错：{}", request.getUploadPath());
+            dto.setErrmsg(String.format("|cloud检查并更新【%s】脚本异常,异常内容【%s】", request.getUploadPath(), scriptCheckResp.getError().getMsg()));
             return dto;
         }
 
         if (!scriptCheckResp.getSuccess()) {
-            dto.setErrmsg(String.format("cloud检查并更新【%s】脚本异常,异常内容【%s】", sceneScriptRef.getUploadPath(), scriptCheckResp.getError().getMsg()));
+            dto.setErrmsg(String.format("cloud检查并更新【%s】脚本异常,异常内容【%s】", request.getUploadPath(), scriptCheckResp.getError().getMsg()));
             return dto;
         }
 
@@ -793,6 +797,7 @@ public class SceneManageServiceImpl implements SceneManageService {
 
     @Override
     public WebResponse<List<SceneScriptRefOpen>> buildSceneForFlowVerify(SceneManageWrapperVO vo, SceneManageWrapperReq req, Long userId) {
+        vo.setPressure(true);
         return sceneManageVo2Req(vo, req);
     }
 
@@ -869,5 +874,54 @@ public class SceneManageServiceImpl implements SceneManageService {
     @Override
     public String archive(SceneManageDeleteReq vo) {
         return cloudSceneManageApi.archive(vo);
+    }
+
+    private ScriptCheckAndUpdateReq buildVerifyRequest(ScriptAndActivityVerifyRequest verifyParam) {
+        ScriptCheckAndUpdateReq checkReq = new ScriptCheckAndUpdateReq();
+        checkReq.setPressure(verifyParam.isPressure());
+        checkReq.setAbsolutePath(verifyParam.isAbsolutePath());
+        checkReq.setUploadPath(verifyParam.getScriptList().get(0).getUploadPath());
+        checkReq.setSceneId(verifyParam.getSceneId());
+        checkReq.setRequest(new ArrayList<>());
+        parseDeployIfNecessary(verifyParam, checkReq);
+        Integer version = verifyParam.getVersion();
+        if (version != null) {checkReq.setVersion(version);}
+        return checkReq;
+    }
+
+    private void parseDeployIfNecessary(ScriptAndActivityVerifyRequest verifyParam, ScriptCheckAndUpdateReq req) {
+        if (req.isPressure()) {
+            ScriptManageDeployDetailResponse deployDetail = verifyParam.getDeployDetail();
+            if (Objects.nonNull(deployDetail)) {
+                List<PluginConfigDetailResponse> pluginFiles = deployDetail.getPluginConfigDetailResponseList();
+                if (CollectionUtils.isNotEmpty(pluginFiles)) {
+                    List<EnginePlugin> refOutputList = pluginFiles.stream()
+                        .map(plugin -> EnginePlugin.of(Long.valueOf(plugin.getId()), plugin.getVersion()))
+                        .collect(Collectors.toList());
+                    req.setPlugins(refOutputList);
+                }
+                if (Objects.isNull(verifyParam.getSceneId())) {
+                    List<FileManageResponse> dataFiles = deployDetail.getFileManageResponseList();
+                    if (CollectionUtils.isNotEmpty(dataFiles)) {
+                        Map<Integer, List<FileManageResponse>> dataFilesMap = dataFiles.stream()
+                            .collect(Collectors.groupingBy(FileManageResponse::getFileType, Collectors.toList()));
+                        List<FileManageResponse> scriptFile = dataFilesMap.get(FileTypeEnum.SCRIPT.getCode());
+                        if (CollectionUtils.isNotEmpty(scriptFile)) {
+                            req.setScriptPath(scriptFile.get(0).getUploadPath());
+                        }
+                        List<FileManageResponse> csvFiles = dataFilesMap.get(FileTypeEnum.DATA.getCode());
+                        if (CollectionUtils.isNotEmpty(csvFiles)) {
+                            req.setCsvPaths(csvFiles.stream()
+                                .map(FileManageResponse::getUploadPath).collect(Collectors.toList()));
+                        }
+                    }
+                    List<FileManageResponse> attachmentFiles = deployDetail.getAttachmentManageResponseList();
+                    if (CollectionUtils.isNotEmpty(attachmentFiles)) {
+                        req.setAttachments(attachmentFiles.stream()
+                            .map(FileManageResponse::getUploadPath).collect(Collectors.toList()));
+                    }
+                }
+            }
+        }
     }
 }
