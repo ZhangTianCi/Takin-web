@@ -37,4 +37,30 @@ public class ScriptCheckAndUpdateReq extends ContextExt {
      * <p><strong>默认是混合压测后的版本</strong></p>
      */
     private Integer version = 1;
+
+    private boolean isPressure;
+    private Long sceneId;
+    // 脚本文件路径
+    private String scriptPath;
+    // 数据文件路径
+    private List<String> csvPaths;
+    // 附件文件路径
+    private List<String> attachments;
+    // 插件
+    private List<EnginePlugin> plugins;
+
+    @Data
+    public static class EnginePlugin {
+        private Long pluginId;
+        private String pluginVersion;
+
+        EnginePlugin(Long pluginId, String pluginVersion) {
+            this.pluginId = pluginId;
+            this.pluginVersion = pluginVersion;
+        }
+
+        public static EnginePlugin of(Long pluginId, String pluginVersion) {
+            return new EnginePlugin(pluginId, pluginVersion);
+        }
+    }
 }

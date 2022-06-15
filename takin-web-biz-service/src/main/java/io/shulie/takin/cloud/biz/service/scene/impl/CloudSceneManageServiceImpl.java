@@ -46,9 +46,12 @@ import io.shulie.takin.adapter.api.model.common.RuleBean;
 import io.shulie.takin.adapter.api.model.common.TimeBean;
 import io.shulie.takin.adapter.api.model.common.UploadFileDTO;
 import io.shulie.takin.adapter.api.model.request.scenemanage.CloudUpdateSceneFileRequest;
+import io.shulie.takin.adapter.api.model.request.scenemanage.ScriptCheckAndUpdateReq;
+import io.shulie.takin.adapter.api.model.request.scenemanage.ScriptCheckAndUpdateReq.EnginePlugin;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
 import io.shulie.takin.cloud.biz.cloudserver.SceneManageDTOConvert;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
+import io.shulie.takin.cloud.biz.config.AppConfig;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneBusinessActivityRefInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneManageQueryInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneManageWrapperInput;
@@ -57,9 +60,11 @@ import io.shulie.takin.cloud.biz.input.scenemanage.SceneSlaRefInput;
 import io.shulie.takin.cloud.biz.notify.StartFailEventSource;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageListOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
+import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.EnginePluginRefOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneBusinessActivityRefOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneScriptRefOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneSlaRefOutput;
+import io.shulie.takin.cloud.biz.service.engine.EnginePluginFilesService;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.script.ScriptAnalyzeService;
@@ -72,19 +77,19 @@ import io.shulie.takin.cloud.common.constants.SceneManageConstant;
 import io.shulie.takin.cloud.common.enums.PressureModeEnum;
 import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import io.shulie.takin.cloud.common.enums.TimeUnitEnum;
+import io.shulie.takin.cloud.common.enums.scenemanage.FileTypeEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageErrorEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneRunTaskStatusEnum;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
-import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
-import io.shulie.takin.web.common.util.RedisClientUtil;
 import io.shulie.takin.cloud.common.utils.CloudPluginUtils;
 import io.shulie.takin.cloud.common.utils.JsonUtil;
 import io.shulie.takin.cloud.common.utils.LinuxUtil;
 import io.shulie.takin.cloud.common.utils.UrlUtil;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.dao.scene.manage.SceneManageDAO;
+import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
 import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
 import io.shulie.takin.cloud.data.param.scenemanage.SceneManageCreateOrUpdateParam;
 import io.shulie.takin.cloud.data.result.report.ReportResult;
@@ -104,6 +109,7 @@ import io.shulie.takin.utils.PathFormatForTest;
 import io.shulie.takin.utils.file.FileManagerHelper;
 import io.shulie.takin.utils.json.JsonHelper;
 import io.shulie.takin.utils.string.StringUtil;
+import io.shulie.takin.web.common.util.RedisClientUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
@@ -157,7 +163,10 @@ public class CloudSceneManageServiceImpl extends AbstractIndicators implements C
     private String scriptPath;
     @Value("${script.pre.match:true}")
     private boolean scriptPreMatch;
-
+    @Resource
+    private EnginePluginFilesService enginePluginFilesService;
+    @Resource
+    private AppConfig appConfig;
     public static final String SCENE_MANAGE = "sceneManage";
     public static final String SCENE_BUSINESS_ACTIVITY = "sceneBusinessActivity";
     public static final String SCENE_SCRIPT = "sceneScript";
@@ -985,9 +994,10 @@ public class CloudSceneManageServiceImpl extends AbstractIndicators implements C
     }
 
     @Override
-    public ScriptVerityRespExt checkAndUpdate(List<String> request, String uploadPath, boolean isAbsolutePath,
-        boolean update, Integer version) {
+    public ScriptVerityRespExt checkAndUpdate(ScriptCheckAndUpdateReq updateReq) {
         String path;
+        boolean isAbsolutePath = updateReq.isAbsolutePath();
+        String uploadPath = updateReq.getUploadPath();
         if (!isAbsolutePath) {
             path = scriptPath + SceneManageConstant.FILE_SPLIT + uploadPath;
             //兼容性处理
@@ -999,14 +1009,16 @@ public class CloudSceneManageServiceImpl extends AbstractIndicators implements C
             path = uploadPath;
         }
         ScriptVerityExt scriptVerityExt = new ScriptVerityExt();
-        scriptVerityExt.setRequest(request);
-        scriptVerityExt.setVersion(version);
+        scriptVerityExt.setRequest(updateReq.getRequest());
+        scriptVerityExt.setVersion(updateReq.getVersion());
         scriptVerityExt.setScriptPath(path);
+        scriptVerityExt.setUseNewVerify(updateReq.isPressure());
+        completedScriptVerityIfNecessary(scriptVerityExt, updateReq);
         ScriptVerityRespExt scriptVerityRespExt = scriptAnalyzeService.verityScript(scriptVerityExt);
         if (scriptVerityRespExt != null && CollectionUtils.isNotEmpty(scriptVerityRespExt.getErrorMsg())) {
             return scriptVerityRespExt;
         }
-        if (update) {
+        if (updateReq.isUpdate()) {
             scriptAnalyzeService.updateScriptContent(uploadPath);
         }
         return null;
@@ -1376,5 +1388,71 @@ public class CloudSceneManageServiceImpl extends AbstractIndicators implements C
         entity.setStatus(-1);
         entity.setIsArchive(1);
         sceneManageDAO.updateById(entity);
+    }
+
+    private void completedScriptVerityIfNecessary(ScriptVerityExt scriptVerityExt, ScriptCheckAndUpdateReq updateReq) {
+        if (updateReq.isPressure()) {
+            Long sceneId = updateReq.getSceneId();
+            boolean absolutePath = updateReq.isAbsolutePath();
+            if (Objects.nonNull(sceneId)) {
+                SceneManageQueryOptions options = new SceneManageQueryOptions();
+                options.setIncludeScript(true);
+                SceneManageWrapperOutput sceneManage = getSceneManage(sceneId, options);
+                List<SceneScriptRefOutput> uploadFile = sceneManage.getUploadFile();
+                if (CollectionUtils.isNotEmpty(uploadFile)) {
+                    Map<Integer, List<SceneScriptRefOutput>> filesMap = uploadFile.stream().collect(
+                        Collectors.groupingBy(SceneScriptRefOutput::getFileType, Collectors.toList()));
+                    Integer scriptCode = FileTypeEnum.SCRIPT.getCode();
+                    List<SceneScriptRefOutput> scriptFiles = filesMap.get(scriptCode);
+                    List<String> scriptPaths = Collections.singletonList(scriptFiles.get(0).getUploadPath());
+                    scriptVerityExt.setScriptPaths(reWritePathIfNecessary(scriptPaths, scriptCode, absolutePath));
+                    Integer dataCode = FileTypeEnum.DATA.getCode();
+                    List<SceneScriptRefOutput> csvFiles = filesMap.get(dataCode);
+                    if (CollectionUtils.isNotEmpty(csvFiles)) {
+                        List<String> csvPaths = csvFiles.stream().map(SceneScriptRefOutput::getUploadPath)
+                            .filter(Objects::nonNull).collect(Collectors.toList());
+                        scriptVerityExt.setCsvPaths(reWritePathIfNecessary(csvPaths, dataCode, absolutePath));
+                    }
+                    Integer attachmentCode = FileTypeEnum.ATTACHMENT.getCode();
+                    List<SceneScriptRefOutput> attachmentFiles = filesMap.get(attachmentCode);
+                    if (CollectionUtils.isNotEmpty(attachmentFiles)) {
+                        List<String> attachmentPaths = attachmentFiles.stream().map(SceneScriptRefOutput::getUploadPath)
+                            .filter(Objects::nonNull).collect(Collectors.toList());
+                        scriptVerityExt.setAttachments(reWritePathIfNecessary(attachmentPaths, attachmentCode, absolutePath));
+                    }
+                }
+
+            } else {
+                String scriptPath = updateReq.getScriptPath();
+                if (StringUtils.isNotBlank(scriptPath)) {
+                    scriptVerityExt.setScriptPaths(
+                        reWritePathIfNecessary(Collections.singletonList(scriptPath), FileTypeEnum.SCRIPT.getCode(), absolutePath));
+                }
+                List<String> csvPaths = updateReq.getCsvPaths();
+                if (CollectionUtils.isNotEmpty(csvPaths)) {
+                    scriptVerityExt.setCsvPaths(
+                        reWritePathIfNecessary(csvPaths, FileTypeEnum.DATA.getCode(), absolutePath));
+                }
+                List<String> attachmentPaths = updateReq.getAttachments();
+                if (CollectionUtils.isNotEmpty(attachmentPaths)) {
+                    scriptVerityExt.setAttachments(
+                        reWritePathIfNecessary(attachmentPaths, FileTypeEnum.ATTACHMENT.getCode(), absolutePath));
+                }
+            }
+            List<EnginePlugin> plugins = updateReq.getPlugins();
+            if (CollectionUtils.isNotEmpty(plugins)) {
+                List<EnginePluginRefOutput> refOutputs = plugins.stream()
+                    .map(plugin -> EnginePluginRefOutput.create(plugin.getPluginId(), plugin.getPluginVersion()))
+                    .collect(Collectors.toList());
+                String pluginPaths = enginePluginFilesService.findPluginFilesPathByPluginIdAndVersion(refOutputs)
+                    .stream().filter(Objects::nonNull).collect(Collectors.joining(","));
+                scriptVerityExt.setPluginPaths(pluginPaths);
+            }
+        }
+    }
+
+    private String reWritePathIfNecessary(List<String> paths, Integer fileType, boolean absolutePath) {
+        return paths.stream().map(path -> appConfig.reWritePathByNfsRelative(path, fileType, absolutePath))
+            .collect(Collectors.joining(","));
     }
 }
