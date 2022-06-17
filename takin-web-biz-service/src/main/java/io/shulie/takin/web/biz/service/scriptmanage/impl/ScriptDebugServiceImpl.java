@@ -530,7 +530,7 @@ public class ScriptDebugServiceImpl extends AbstractIndicators implements Script
     private List<String> checkScriptCorrelationAndGetError(SceneTryRunTaskStartReq debugCloudRequest) {
         SceneManageWrapperDTO sceneData = new SceneManageWrapperDTO();
         sceneData.setScriptType(debugCloudRequest.getScriptType());
-
+        sceneData.setScriptId(debugCloudRequest.getScriptDeployId());
         // 上传路径
         List<SceneScriptRefOpen> uploadFileList = debugCloudRequest.getUploadFile();
         if (CollectionUtil.isNotEmpty(uploadFileList)) {
