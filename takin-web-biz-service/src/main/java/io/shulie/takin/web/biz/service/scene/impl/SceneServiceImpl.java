@@ -766,6 +766,11 @@ public class SceneServiceImpl implements SceneService {
                 updateRequest.setPluginList(pluginConfigCreateRequests);
             }
         } else {
+            // 将附件合并进来，否则上传完附件之后再去修改脚本附件数据会丢失
+            List<FileManageResponse> attachmentFiles = result.getAttachmentManageResponseList();
+            if (CollectionUtils.isNotEmpty(attachmentFiles)) {
+                fileManageResponseList.addAll(attachmentFiles);
+            }
             List<FileManageResponse> dataFileManageResponseList = fileManageResponseList.stream().filter(o ->
                     !FileTypeEnum.SCRIPT.getCode().equals(o.getFileType())).collect(Collectors.toList());
             List<FileManageUpdateRequest> updateFileManageRequests = new ArrayList<>();
