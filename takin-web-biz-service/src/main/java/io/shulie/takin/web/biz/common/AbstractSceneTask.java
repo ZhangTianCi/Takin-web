@@ -99,7 +99,7 @@ public abstract class AbstractSceneTask {
             //分片：web1= 0^0、1^1  和 web2= 0^1、1^0
             long x = t.getTenantId() % shardingContext.getShardingTotalCount();
             long y = t.getReportId() % shardingContext.getShardingTotalCount();
-            return (x ^ y) == shardingContext.getShardingItem();
+            return (x ^ y) == shardingContext.getShardingItem() ;
         }).collect(Collectors.groupingBy(SceneTaskDto::getTenantId));
         if (org.springframework.util.CollectionUtils.isEmpty(listMap)) {
             return taskAlreadyRun;
