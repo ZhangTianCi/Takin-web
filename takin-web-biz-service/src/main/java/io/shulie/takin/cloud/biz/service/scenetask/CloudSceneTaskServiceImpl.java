@@ -24,14 +24,12 @@ import com.alibaba.fastjson.TypeReference;
 
 import cn.hutool.json.JSONUtil;
 import com.google.common.collect.Lists;
-import com.pamirs.takin.cloud.entity.dao.report.TReportMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
 import com.pamirs.takin.cloud.entity.domain.entity.report.ReportBusinessActivityDetail;
 import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.SceneFileReadPosition;
 import com.pamirs.takin.cloud.entity.domain.vo.file.FileSliceRequest;
 import com.pamirs.takin.cloud.entity.domain.vo.report.SceneTaskNotifyParam;
 import io.shulie.takin.adapter.api.entrypoint.pressure.PressureTaskApi;
-import io.shulie.takin.adapter.api.entrypoint.resource.CloudResourceApi;
 import io.shulie.takin.adapter.api.model.common.RuleBean;
 import io.shulie.takin.adapter.api.model.common.TimeBean;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStopReq;
@@ -63,7 +61,6 @@ import io.shulie.takin.cloud.biz.output.scenetask.SceneTaskStartCheckOutput.File
 import io.shulie.takin.cloud.biz.output.scenetask.SceneTaskStopOutput;
 import io.shulie.takin.cloud.biz.output.scenetask.SceneTryRunTaskStartOutput;
 import io.shulie.takin.cloud.biz.output.scenetask.SceneTryRunTaskStatusOutput;
-import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
@@ -156,8 +153,6 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
     @Resource
     private PluginManager pluginManager;
     @Resource
-    private TReportMapper tReportMapper;
-    @Resource
     private SceneManageDAO sceneManageDao;
     @Resource
     private SceneManageDAO sceneManageDAO;
@@ -187,10 +182,6 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
     private RedisClientUtil redisClientUtil;
     @Resource
     private PressureTaskVarietyDAO pressureTaskVarietyDAO;
-    @Resource
-    private CloudAsyncService cloudAsyncService;
-    @Resource
-    private CloudResourceApi cloudResourceApi;
     @Resource
     private PressureTaskApi pressureTaskApi;
 
@@ -1292,7 +1283,6 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             try {
                 SceneTaskStartInput input = JsonHelper.json2Bean(tryRun, SceneTaskStartInput.class);
                 fillContext(input);
-                cloudAsyncService.checkStartTimeout(sceneId);
                 startTask(input);
             } catch (Exception e) {
                 startFail(context.getResourceId(), e.getMessage());
@@ -1311,7 +1301,6 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             try {
                 SceneTaskStartInput input = JsonHelper.json2Bean(flowDebug, SceneTaskStartInput.class);
                 fillContext(input);
-                cloudAsyncService.checkStartTimeout(sceneId);
                 startTask(input);
             } catch (Exception e) {
                 startFail(context.getResourceId(), e.getMessage());
@@ -1330,7 +1319,6 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             try {
                 SceneTaskStartInput input = JsonHelper.json2Bean(inspect, SceneTaskStartInput.class);
                 fillContext(input);
-                cloudAsyncService.checkStartTimeout(sceneId);
                 startTask(input);
             } catch (Exception e) {
                 startFail(context.getResourceId(), e.getMessage());
