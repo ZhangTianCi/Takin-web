@@ -24,6 +24,12 @@ public class ActivityCategoryEntity extends TenantBaseEntity {
     @TableField(value = "title")
     private String title;
 
+    /**
+     * 维护从根节点 -> 该节点 的关系
+     */
+    @TableField("relation_code")
+    private String relationCode;
+
     @TableField(value = "gmt_create")
     private Date gmtCreate;
 

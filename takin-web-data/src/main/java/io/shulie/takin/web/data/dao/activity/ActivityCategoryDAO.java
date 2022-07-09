@@ -9,6 +9,8 @@ public interface ActivityCategoryDAO {
     long ROOT_ID = 0; // 前端默认0=全部(根节点)
     long ROOT_PARENT_ID = -1;
     String ROOT_NAME = "全部";
+    String RELATION_CODE_DELIMITER = "_";
+    String ROOT_RELATION_CODE = String.valueOf(ROOT_ID);
 
     boolean hasChildren(Long parentId);
 
@@ -24,6 +26,5 @@ public interface ActivityCategoryDAO {
 
     List<ActivityCategoryEntity> list();
 
-    ActivityCategoryEntity findRoot();
-
+    boolean updateRelationCode(Long categoryId, String relationCode);
 }
