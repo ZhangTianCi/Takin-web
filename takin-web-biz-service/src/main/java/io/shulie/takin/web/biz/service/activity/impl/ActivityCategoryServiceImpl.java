@@ -17,12 +17,10 @@ import io.shulie.takin.web.biz.service.activity.ActivityCategoryService;
 import io.shulie.takin.web.data.dao.activity.ActivityCategoryDAO;
 import io.shulie.takin.web.data.model.mysql.ActivityCategoryEntity;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
-import static io.shulie.takin.web.data.dao.activity.ActivityCategoryDAO.RELATION_CODE_DELIMITER;
 import static io.shulie.takin.web.data.dao.activity.ActivityCategoryDAO.ROOT_ID;
 import static io.shulie.takin.web.data.dao.activity.ActivityCategoryDAO.ROOT_NAME;
 import static io.shulie.takin.web.data.dao.activity.ActivityCategoryDAO.ROOT_PARENT_ID;
@@ -38,6 +36,9 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
 
     @Resource
     private ActivityService activityService;
+
+    private static final ActivityCategoryEntity ROOT =
+        new ActivityCategoryEntity(ROOT_ID, ROOT_PARENT_ID, ROOT_NAME, ROOT_RELATION_CODE);
 
     @Override
     public ActivityCategoryTreeResponse list() {
@@ -72,7 +73,8 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
         activityCategoryDAO.save(entity);
 
         Long categoryId = entity.getId();
-        activityCategoryDAO.updateRelationCode(categoryId, parentRelationCode + RELATION_CODE_DELIMITER + categoryId);
+        activityCategoryDAO.updateRelationCode(categoryId,
+            ActivityCategoryDAO.completedEndIfNecessary(parentRelationCode) + categoryId);
         return categoryId;
     }
 
@@ -95,61 +97,89 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteCategory(Long id) {
-        if (isRoot(id)) {
+    public void deleteCategory(Long categoryId) {
+        if (isRoot(categoryId)) {
             throw new RuntimeException("根节点不允许删除");
         }
-        ActivityCategoryEntity category = activityCategoryDAO.findById(id);
+        ActivityCategoryEntity category = activityCategoryDAO.findById(categoryId);
         if (Objects.isNull(category)) {
             return;
         }
-        activityCategoryDAO.deleteById(id);
+        activityCategoryDAO.deleteById(categoryId);
         resetChildren(category);
     }
 
     @Override
-    public List<Long> findDescendants(Long id) {
-        if (isRoot(id)) {
+    public List<Long> findDescendants(Long categoryId) {
+        if (isRoot(categoryId)) {
             return new ArrayList<>(0);
         }
-        ActivityCategoryEntity category = activityCategoryDAO.findById(id);
+        ActivityCategoryEntity category = activityCategoryDAO.findById(categoryId);
         if (Objects.isNull(category)) {
             return new ArrayList<>(0);
         }
         return activityCategoryDAO.startWithRelationCode(category.getRelationCode());
     }
 
-    // 移动下级节点到根节点，并重新设置 relation_code
+    @Override
+    public void move(Long fromCategoryId, Long toCategoryId) {
+        ActivityCategoryEntity sourceCategory = activityCategoryDAO.findById(fromCategoryId);
+        if (Objects.isNull(sourceCategory)) {
+            throw new RuntimeException("源业务活动分类不存在");
+        }
+        ActivityCategoryEntity destCategory = activityCategoryDAO.findById(toCategoryId);
+        if (Objects.isNull(destCategory)) {
+            throw new RuntimeException("目标业务活动分类不存在");
+        }
+        move(sourceCategory, destCategory);
+    }
+
+    // 移动下级节点到根节点
     private void resetChildren(ActivityCategoryEntity parentCategory) {
         // 直接下级
         List<ActivityCategoryEntity> children = activityCategoryDAO.queryChildren(parentCategory.getId());
         if (!CollectionUtils.isEmpty(children)) {
-            String relationCode = parentCategory.getRelationCode();
-            String sourceSegment = ActivityCategoryDAO.completedEndIfNecessary(relationCode);
-            String destSegment = ActivityCategoryDAO.completedEndIfNecessary(String.valueOf(ROOT_ID));
-            Date now = new Date();
-            children.forEach(category -> {
-                category.setRelationCode(category.getRelationCode().replaceFirst(sourceSegment, destSegment));
-                category.setGmtUpdate(now);
-                category.setParentId(ROOT_ID);
-            });
             List<Long> childrenIds = children.stream().map(ActivityCategoryEntity::getId).collect(Collectors.toList());
-            // 下级及递归下级
-            List<Long> descendantIds = activityCategoryDAO.startWithRelationCode(relationCode);
-            descendantIds.removeAll(childrenIds);
-            if (!CollectionUtils.isEmpty(descendantIds)) {
-                List<ActivityCategoryEntity> descendants = activityCategoryDAO.findByIds(descendantIds);
-                if (!CollectionUtils.isEmpty(descendants)) {
-                    descendants.forEach(category -> {
-                        category.setRelationCode(category.getRelationCode().replaceFirst(sourceSegment, destSegment));
-                        category.setGmtUpdate(now);
-                    });
-                    children.addAll(descendants);
-                }
-            }
-            activityCategoryDAO.updateBatchById(children);
+            children.forEach(category -> move(category, ROOT));
             activityService.clearCategory(childrenIds);
         }
+    }
+
+    /**
+     * 移动节点到目标节点下
+     *
+     * @param sourceCategory 源节点
+     * @param destCategory   目标节点
+     */
+    private void move(ActivityCategoryEntity sourceCategory, ActivityCategoryEntity destCategory) {
+        Long sourceCategoryId = sourceCategory.getId(); // 源Id
+        String sourceCategoryRelationCode = sourceCategory.getRelationCode(); // 源关联关系
+        Long destCategoryId = destCategory.getId(); // 目标Id
+        String destCategoryRelationCode = destCategory.getRelationCode(); // 目标关联关系
+
+        Date date = new Date();
+        List<ActivityCategoryEntity> updateCategory = new ArrayList<>(); // 待更新数据集合
+        // 原始关联code_
+        String sourceRelationCode = ActivityCategoryDAO.completedEndIfNecessary(sourceCategoryRelationCode);
+        // 目标关联code_
+        String destRelationCode = ActivityCategoryDAO.completedEndIfNecessary(destCategoryRelationCode);
+        // 自己及递归下级Id
+        List<Long> descendantIds = activityCategoryDAO.startWithRelationCode(sourceCategoryRelationCode);
+        // 递归子级
+        descendantIds.remove(sourceCategoryId);
+        if (!CollectionUtils.isEmpty(descendantIds)) {
+            List<ActivityCategoryEntity> descendants = activityCategoryDAO.findByIds(descendantIds);
+            descendants.forEach(category -> {
+                category.setRelationCode(category.getRelationCode().replaceFirst(sourceRelationCode, destRelationCode));
+                category.setGmtUpdate(date);
+            });
+            updateCategory.addAll(descendants);
+        }
+        sourceCategory.setGmtUpdate(date);
+        sourceCategory.setParentId(destCategoryId);
+        sourceCategory.setRelationCode(destRelationCode + sourceCategoryId);
+        updateCategory.add(sourceCategory);
+        activityCategoryDAO.updateBatchById(updateCategory);
     }
 
     private void recursion(ActivityCategoryTreeResponse parent, Map<Long, List<ActivityCategoryEntity>> parentMap) {

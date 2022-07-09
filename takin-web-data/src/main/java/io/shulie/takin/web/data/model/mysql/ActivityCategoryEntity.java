@@ -35,4 +35,14 @@ public class ActivityCategoryEntity extends TenantBaseEntity {
 
     @TableField(value = "gmt_update")
     private Date gmtUpdate;
+
+    public ActivityCategoryEntity() {
+    }
+
+    public ActivityCategoryEntity(Long id, Long parentId, String title, String relationCode) {
+        this.id = id;
+        this.parentId = parentId;
+        this.title = title;
+        this.relationCode = relationCode;
+    }
 }
