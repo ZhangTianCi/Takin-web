@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import io.shulie.takin.web.data.model.mysql.ActivityCategoryEntity;
+import org.apache.commons.lang3.StringUtils;
 
 public interface ActivityCategoryDAO extends IService<ActivityCategoryEntity> {
 
@@ -12,6 +13,13 @@ public interface ActivityCategoryDAO extends IService<ActivityCategoryEntity> {
     String ROOT_NAME = "全部";
     String RELATION_CODE_DELIMITER = "_";
     String ROOT_RELATION_CODE = String.valueOf(ROOT_ID);
+
+    static String completedEndIfNecessary(String relationCode) {
+        if (StringUtils.isBlank(relationCode) || StringUtils.endsWith(relationCode, RELATION_CODE_DELIMITER)) {
+            return relationCode;
+        }
+        return relationCode.concat(RELATION_CODE_DELIMITER);
+    }
 
     List<ActivityCategoryEntity> queryChildren(Long parentId);
 

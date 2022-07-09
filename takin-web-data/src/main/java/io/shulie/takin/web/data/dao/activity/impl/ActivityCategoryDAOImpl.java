@@ -79,7 +79,9 @@ public class ActivityCategoryDAOImpl extends ServiceImpl<ActivityCategoryMapper,
     public List<Long> startWithRelationCode(String relationCode) {
         LambdaQueryWrapper<ActivityCategoryEntity> queryWrapper = this.getLambdaQueryWrapper()
             .select(ActivityCategoryEntity::getId)
-            .likeRight(ActivityCategoryEntity::getRelationCode, relationCode);
+            .eq(ActivityCategoryEntity::getRelationCode, relationCode)
+            .or()
+            .likeRight(ActivityCategoryEntity::getRelationCode, ActivityCategoryDAO.completedEndIfNecessary(relationCode));
         List<ActivityCategoryEntity> categoryEntities = baseMapper.selectList(queryWrapper);
         if (!CollectionUtils.isEmpty(categoryEntities)) {
             return categoryEntities.stream().map(ActivityCategoryEntity::getId).collect(Collectors.toList());

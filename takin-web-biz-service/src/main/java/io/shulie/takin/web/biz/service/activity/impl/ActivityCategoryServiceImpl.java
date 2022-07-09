@@ -116,7 +116,7 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
         if (Objects.isNull(category)) {
             return new ArrayList<>(0);
         }
-        return activityCategoryDAO.startWithRelationCode(completedEndIfNecessary(category.getRelationCode()));
+        return activityCategoryDAO.startWithRelationCode(category.getRelationCode());
     }
 
     // 移动下级节点到根节点，并重新设置 relation_code
@@ -125,8 +125,8 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
         List<ActivityCategoryEntity> children = activityCategoryDAO.queryChildren(parentCategory.getId());
         if (!CollectionUtils.isEmpty(children)) {
             String relationCode = parentCategory.getRelationCode();
-            String sourceSegment = completedEndIfNecessary(relationCode);
-            String destSegment = completedEndIfNecessary(String.valueOf(ROOT_ID));
+            String sourceSegment = ActivityCategoryDAO.completedEndIfNecessary(relationCode);
+            String destSegment = ActivityCategoryDAO.completedEndIfNecessary(String.valueOf(ROOT_ID));
             resetRelationCode(children, sourceSegment, destSegment);
             List<Long> childrenIds = children.stream().map(ActivityCategoryEntity::getId).collect(Collectors.toList());
             // 下级及递归下级
@@ -170,12 +170,5 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
 
     private boolean isRoot(Long id) {
         return Objects.equals(ROOT_ID, id);
-    }
-
-    private String completedEndIfNecessary(String relationCode) {
-        if (StringUtils.isBlank(relationCode) || StringUtils.endsWith(relationCode, RELATION_CODE_DELIMITER)) {
-            return relationCode;
-        }
-        return relationCode.concat(RELATION_CODE_DELIMITER);
     }
 }
