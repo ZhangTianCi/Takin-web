@@ -54,4 +54,11 @@ public class ActivityCategoryDAOImpl extends ServiceImpl<ActivityCategoryMapper,
     public boolean deleteById(Long id) {
         return SqlHelper.retBool(baseMapper.deleteById(id));
     }
+
+    @Override
+    public ActivityCategoryEntity findRoot() {
+        LambdaQueryWrapper<ActivityCategoryEntity> queryWrapper = this.getLambdaQueryWrapper()
+            .eq(ActivityCategoryEntity::getParentId, ROOT_PARENT_ID);
+        return baseMapper.selectOne(queryWrapper);
+    }
 }

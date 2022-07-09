@@ -6,6 +6,8 @@ import io.shulie.takin.web.data.model.mysql.ActivityCategoryEntity;
 
 public interface ActivityCategoryDAO {
 
+    long ROOT_PARENT_ID = -1;
+
     boolean hasChildren(Long parentId);
 
     boolean exists(Long id);
@@ -19,5 +21,7 @@ public interface ActivityCategoryDAO {
     boolean save(ActivityCategoryEntity entity);
 
     List<ActivityCategoryEntity> list();
+
+    ActivityCategoryEntity findRoot();
 
 }

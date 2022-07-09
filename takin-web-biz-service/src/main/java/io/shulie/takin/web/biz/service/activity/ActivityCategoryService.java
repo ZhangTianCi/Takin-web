@@ -6,8 +6,6 @@ import io.shulie.takin.web.biz.pojo.response.activity.ActivityCategoryTreeRespon
 
 public interface ActivityCategoryService {
 
-    long ROOT_PARENT_ID = -1;
-
     ActivityCategoryTreeResponse list();
 
     Long addCategory(ActivityCategoryCreateRequest createRequest);
