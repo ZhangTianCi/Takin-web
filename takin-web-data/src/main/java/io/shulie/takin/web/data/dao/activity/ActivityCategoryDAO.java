@@ -6,7 +6,7 @@ import io.shulie.takin.web.data.model.mysql.ActivityCategoryEntity;
 
 public interface ActivityCategoryDAO {
 
-    long ROOT_PARENT_ID = -1;
+    long ROOT_PARENT_ID = 0; // 前端默认0=全部(根节点)
 
     boolean hasChildren(Long parentId);
 
