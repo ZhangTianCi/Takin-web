@@ -1,5 +1,8 @@
 package io.shulie.takin.web.entrypoint.controller.activity;
 
+import java.util.Collections;
+import java.util.List;
+
 import javax.annotation.Resource;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
@@ -40,8 +43,8 @@ public class ActivityCategoryController {
 
     @ApiOperation("分类列表")
     @GetMapping("list")
-    public ResponseResult<ActivityCategoryTreeResponse> list() {
-        return ResponseResult.success(activityCategoryService.list());
+    public ResponseResult<List<ActivityCategoryTreeResponse>> list() {
+        return ResponseResult.success(Collections.singletonList(activityCategoryService.list()));
     }
 
     @ApiOperation("新增分类")
