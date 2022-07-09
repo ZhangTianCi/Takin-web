@@ -17,9 +17,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import static io.shulie.takin.web.data.dao.activity.ActivityCategoryDAO.RELATION_CODE_DELIMITER;
 import static io.shulie.takin.web.data.dao.activity.ActivityCategoryDAO.ROOT_ID;
 import static io.shulie.takin.web.data.dao.activity.ActivityCategoryDAO.ROOT_NAME;
 import static io.shulie.takin.web.data.dao.activity.ActivityCategoryDAO.ROOT_PARENT_ID;
+import static io.shulie.takin.web.data.dao.activity.ActivityCategoryDAO.ROOT_RELATION_CODE;
 import static java.util.stream.Collectors.groupingBy;
 
 @Slf4j
@@ -44,8 +46,13 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
     @Override
     public Long addCategory(ActivityCategoryCreateRequest createRequest) {
         Long parentId = createRequest.getParentId();
-        if (!activityCategoryDAO.exists(parentId)) {
-            throw new RuntimeException("业务活动分类上级不存在");
+        String parentRelationCode = ROOT_RELATION_CODE;
+        if (!Objects.equals(parentId, ROOT_ID)) {
+            ActivityCategoryEntity parentCategory = activityCategoryDAO.findById(parentId);
+            if (Objects.isNull(parentCategory)) {
+                throw new RuntimeException("业务活动分类上级不存在");
+            }
+            parentRelationCode = parentCategory.getRelationCode();
         }
         Date now = new Date();
         ActivityCategoryEntity entity = new ActivityCategoryEntity();
@@ -54,7 +61,10 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
         entity.setGmtCreate(now);
         entity.setGmtUpdate(now);
         activityCategoryDAO.save(entity);
-        return entity.getId();
+
+        Long categoryId = entity.getId();
+        activityCategoryDAO.updateRelationCode(categoryId, parentRelationCode + RELATION_CODE_DELIMITER + categoryId);
+        return categoryId;
     }
 
     @Override

@@ -1,5 +1,6 @@
 package io.shulie.takin.web.data.dao.activity.impl;
 
+import java.util.Date;
 import java.util.List;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -56,9 +57,11 @@ public class ActivityCategoryDAOImpl extends ServiceImpl<ActivityCategoryMapper,
     }
 
     @Override
-    public ActivityCategoryEntity findRoot() {
-        LambdaQueryWrapper<ActivityCategoryEntity> queryWrapper = this.getLambdaQueryWrapper()
-            .eq(ActivityCategoryEntity::getParentId, ROOT_PARENT_ID);
-        return baseMapper.selectOne(queryWrapper);
+    public boolean updateRelationCode(Long categoryId, String relationCode) {
+        ActivityCategoryEntity entity = new ActivityCategoryEntity();
+        entity.setId(categoryId);
+        entity.setRelationCode(relationCode);
+        entity.setGmtUpdate(new Date());
+        return SqlHelper.retBool(baseMapper.updateById(entity));
     }
 }
