@@ -771,6 +771,7 @@ public class ActivityServiceImpl implements ActivityService {
         activityResponse.setVerifyStatus(verifyStatus);
         activityResponse.setVerifiedFlag(
                 verifyStatus.equals(BusinessActivityRedisKeyConstant.ACTIVITY_VERIFY_VERIFIED));
+        activityResponse.setCategory(result.getCategory());
         return activityResponse;
     }
 
