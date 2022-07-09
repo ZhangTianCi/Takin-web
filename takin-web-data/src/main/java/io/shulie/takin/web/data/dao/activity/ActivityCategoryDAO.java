@@ -1,0 +1,27 @@
+package io.shulie.takin.web.data.dao.activity;
+
+import java.util.List;
+
+import io.shulie.takin.web.data.model.mysql.ActivityCategoryEntity;
+
+public interface ActivityCategoryDAO {
+
+    long ROOT_PARENT_ID = 0; // 前端默认0=全部(根节点)
+
+    boolean hasChildren(Long parentId);
+
+    boolean exists(Long id);
+
+    ActivityCategoryEntity findById(Long id);
+
+    boolean deleteById(Long id);
+
+    boolean updateById(ActivityCategoryEntity entity);
+
+    boolean save(ActivityCategoryEntity entity);
+
+    List<ActivityCategoryEntity> list();
+
+    ActivityCategoryEntity findRoot();
+
+}

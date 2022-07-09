@@ -146,6 +146,7 @@ public class ActivityDAOImpl implements ActivityDAO, MPUtil<BusinessLinkManageTa
             businessLinkManageTableEntity.setBindBusinessId(param.getBindBusinessId());
         }
         businessLinkManageTableEntity.setPersistence(param.isPersistence());
+        businessLinkManageTableEntity.setCategory(param.getCategory());
         businessLinkManageTableMapper.insert(businessLinkManageTableEntity);
         param.setLinkId(businessLinkManageTableEntity.getLinkId());
         return businessLinkManageTableEntity.getLinkId();
@@ -280,6 +281,7 @@ public class ActivityDAOImpl implements ActivityDAO, MPUtil<BusinessLinkManageTa
         if(StringUtils.isNotBlank(updateParam.getActivityName())) {
             businessLinkManageTableEntity.setApplicationName(updateParam.getApplicationName());
         }
+        businessLinkManageTableEntity.setCategory(updateParam.getCategory());
         return businessLinkManageTableMapper.updateById(businessLinkManageTableEntity);
     }
 
