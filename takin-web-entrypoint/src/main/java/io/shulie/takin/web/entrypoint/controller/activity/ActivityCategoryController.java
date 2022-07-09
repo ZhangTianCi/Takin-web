@@ -5,7 +5,6 @@ import java.util.List;
 
 import javax.annotation.Resource;
 import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
 
 import io.shulie.takin.common.beans.annotation.ActionTypeEnum;
 import io.shulie.takin.common.beans.annotation.AuthVerification;
@@ -16,6 +15,7 @@ import io.shulie.takin.web.biz.constant.BizOpConstants.Message;
 import io.shulie.takin.web.biz.constant.BizOpConstants.OpTypes;
 import io.shulie.takin.web.biz.constant.BizOpConstants.Vars;
 import io.shulie.takin.web.biz.pojo.request.activity.ActivityCategoryCreateRequest;
+import io.shulie.takin.web.biz.pojo.request.activity.ActivityCategoryDeleteRequest;
 import io.shulie.takin.web.biz.pojo.request.activity.ActivityCategoryUpdateRequest;
 import io.shulie.takin.web.biz.pojo.response.activity.ActivityCategoryTreeResponse;
 import io.shulie.takin.web.biz.service.activity.ActivityCategoryService;
@@ -30,7 +30,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Api(tags = "业务活动分类管理", value = "业务活动分类管理")
@@ -113,7 +112,8 @@ public class ActivityCategoryController {
         needAuth = ActionTypeEnum.DELETE
     )
     @DeleteMapping("delete")
-    public ResponseResult<String> deleteCategory(@Valid @NotNull @RequestParam Long id) {
+    public ResponseResult<String> deleteCategory(@Valid @RequestBody ActivityCategoryDeleteRequest deleteRequest) {
+        Long id = deleteRequest.getId();
         activityCategoryService.deleteCategory(id);
         OperationLogContextHolder.operationType(OpTypes.DELETE);
         OperationLogContextHolder.addVars(Vars.CATEGORY_ID, String.valueOf(id));
