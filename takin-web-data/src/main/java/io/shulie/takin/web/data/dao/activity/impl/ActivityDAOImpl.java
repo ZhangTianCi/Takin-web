@@ -221,6 +221,7 @@ public class ActivityDAOImpl implements ActivityDAO, MPUtil<BusinessLinkManageTa
         result.setIsCore(businessLinkManageTableEntity.getIsCore());
         result.setBusinessDomain(businessLinkManageTableEntity.getBusinessDomain());
         result.setApplicationName(businessLinkManageTableEntity.getApplicationName());
+        result.setCategory(businessLinkManageTableEntity.getCategory());
         return result;
     }
 
