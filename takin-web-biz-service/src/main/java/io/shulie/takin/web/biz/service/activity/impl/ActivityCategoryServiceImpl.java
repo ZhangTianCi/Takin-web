@@ -1,5 +1,6 @@
 package io.shulie.takin.web.biz.service.activity.impl;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +48,7 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
     public Long addCategory(ActivityCategoryCreateRequest createRequest) {
         Long parentId = createRequest.getParentId();
         String parentRelationCode = ROOT_RELATION_CODE;
-        if (!Objects.equals(parentId, ROOT_ID)) {
+        if (!isRoot(parentId)) {
             ActivityCategoryEntity parentCategory = activityCategoryDAO.findById(parentId);
             if (Objects.isNull(parentCategory)) {
                 throw new RuntimeException("业务活动分类上级不存在");
@@ -70,6 +71,9 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
     @Override
     public void updateCategory(ActivityCategoryUpdateRequest updateRequest) {
         Long id = updateRequest.getId();
+        if (isRoot(id)) {
+            throw new RuntimeException("根节点不允许修改");
+        }
         if (!activityCategoryDAO.exists(id)) {
             throw new RuntimeException("业务活动分类不存在");
         }
@@ -82,18 +86,29 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
 
     @Override
     public void deleteCategory(Long id) {
+        if (isRoot(id)) {
+            throw new RuntimeException("根节点不允许删除");
+        }
         ActivityCategoryEntity category = activityCategoryDAO.findById(id);
         if (Objects.isNull(category)) {
             return;
-        }
-        Long parentId = category.getParentId();
-        if (Objects.isNull(parentId) || Objects.equals(parentId, ROOT_PARENT_ID)) {
-            throw new RuntimeException("分类根节点不允许删除");
         }
         if (activityCategoryDAO.hasChildren(id)) {
             throw new RuntimeException("分类存在子级不允许删除");
         }
         activityCategoryDAO.deleteById(id);
+    }
+
+    @Override
+    public List<Long> findDescendants(Long id) {
+        if (isRoot(id)) {
+            return new ArrayList<>(0);
+        }
+        ActivityCategoryEntity category = activityCategoryDAO.findById(id);
+        if (Objects.isNull(category)) {
+            return new ArrayList<>(0);
+        }
+        return activityCategoryDAO.startWithRelationCode(category.getRelationCode());
     }
 
     private void recursion(ActivityCategoryTreeResponse parent, Map<Long, List<ActivityCategoryEntity>> parentMap) {
@@ -107,5 +122,9 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
                 parent.addChild(childResponse);
             });
         }
+    }
+
+    private boolean isRoot(Long id) {
+        return Objects.equals(ROOT_ID, id);
     }
 }

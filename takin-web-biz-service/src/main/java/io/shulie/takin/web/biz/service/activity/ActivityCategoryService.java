@@ -1,5 +1,7 @@
 package io.shulie.takin.web.biz.service.activity;
 
+import java.util.List;
+
 import io.shulie.takin.web.biz.pojo.request.activity.ActivityCategoryCreateRequest;
 import io.shulie.takin.web.biz.pojo.request.activity.ActivityCategoryUpdateRequest;
 import io.shulie.takin.web.biz.pojo.response.activity.ActivityCategoryTreeResponse;
@@ -13,4 +15,12 @@ public interface ActivityCategoryService {
     void updateCategory(ActivityCategoryUpdateRequest updateRequest);
 
     void deleteCategory(Long id);
+
+    /**
+     * 查找指定节点及其下级节点集合
+     *
+     * @param id 节点Id
+     * @return 节点及其下级节点集合
+     */
+    List<Long> findDescendants(Long id);
 }
