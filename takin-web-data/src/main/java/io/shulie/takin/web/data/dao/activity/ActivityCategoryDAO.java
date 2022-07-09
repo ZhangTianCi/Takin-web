@@ -27,4 +27,6 @@ public interface ActivityCategoryDAO {
     List<ActivityCategoryEntity> list();
 
     boolean updateRelationCode(Long categoryId, String relationCode);
+
+    List<Long> startWithRelationCode(String relationCode);
 }

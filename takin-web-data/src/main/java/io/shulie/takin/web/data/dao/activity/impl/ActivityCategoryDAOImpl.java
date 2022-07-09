@@ -1,7 +1,9 @@
 package io.shulie.takin.web.data.dao.activity.impl;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -12,6 +14,7 @@ import io.shulie.takin.web.data.mapper.mysql.ActivityCategoryMapper;
 import io.shulie.takin.web.data.model.mysql.ActivityCategoryEntity;
 import io.shulie.takin.web.data.util.MPUtil;
 import org.springframework.stereotype.Repository;
+import org.springframework.util.CollectionUtils;
 
 @Repository
 public class ActivityCategoryDAOImpl extends ServiceImpl<ActivityCategoryMapper, ActivityCategoryEntity>
@@ -63,5 +66,17 @@ public class ActivityCategoryDAOImpl extends ServiceImpl<ActivityCategoryMapper,
         entity.setRelationCode(relationCode);
         entity.setGmtUpdate(new Date());
         return SqlHelper.retBool(baseMapper.updateById(entity));
+    }
+
+    @Override
+    public List<Long> startWithRelationCode(String relationCode) {
+        LambdaQueryWrapper<ActivityCategoryEntity> queryWrapper = this.getLambdaQueryWrapper()
+            .select(ActivityCategoryEntity::getId)
+            .likeRight(ActivityCategoryEntity::getRelationCode, relationCode);
+        List<ActivityCategoryEntity> categoryEntities = baseMapper.selectList(queryWrapper);
+        if (!CollectionUtils.isEmpty(categoryEntities)) {
+            return categoryEntities.stream().map(ActivityCategoryEntity::getId).collect(Collectors.toList());
+        }
+        return new ArrayList<>(0);
     }
 }

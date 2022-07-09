@@ -65,6 +65,7 @@ import io.shulie.takin.web.biz.pojo.response.scriptmanage.ScriptManageDeployDeta
 import io.shulie.takin.web.biz.service.ActivityService;
 import io.shulie.takin.web.biz.service.ApplicationService;
 import io.shulie.takin.web.biz.service.LinkTopologyService;
+import io.shulie.takin.web.biz.service.activity.ActivityCategoryService;
 import io.shulie.takin.web.biz.service.placeholdermanage.PlaceholderManageService;
 import io.shulie.takin.web.biz.service.report.ReportService;
 import io.shulie.takin.web.biz.service.scene.ApplicationBusinessActivityService;
@@ -157,6 +158,8 @@ public class ActivityServiceImpl implements ActivityService {
 
     @Autowired
     private ApplicationService applicationService;
+    @Resource
+    private ActivityCategoryService activityCategoryService;
 
     @Override
     public List<BusinessApplicationListResponse> listApplicationByBusinessActivityIds(List<Long> businessActivityIds,
@@ -537,6 +540,7 @@ public class ActivityServiceImpl implements ActivityService {
         param.setCurrent(request.getCurrent());
         param.setPageSize(request.getPageSize());
         param.setType(request.getType());
+        param.setCategories(activityCategoryService.findDescendants(request.getCategory()));
         WebPluginUtils.fillQueryParam(param);
 
         PagingList<ActivityListResult> activityListResultPagingList = activityDAO.pageActivities(param);
