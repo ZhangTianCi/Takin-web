@@ -17,6 +17,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import static io.shulie.takin.web.data.dao.activity.ActivityCategoryDAO.ROOT_ID;
+import static io.shulie.takin.web.data.dao.activity.ActivityCategoryDAO.ROOT_NAME;
 import static io.shulie.takin.web.data.dao.activity.ActivityCategoryDAO.ROOT_PARENT_ID;
 import static java.util.stream.Collectors.groupingBy;
 
@@ -30,12 +32,12 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
     @Override
     public ActivityCategoryTreeResponse list() {
         List<ActivityCategoryEntity> entityList = activityCategoryDAO.list();
-        Map<Long, List<ActivityCategoryEntity>> parentMap = entityList.stream().collect(
-            groupingBy(ActivityCategoryEntity::getParentId));
-        ActivityCategoryEntity rootCategory = parentMap.get(ROOT_PARENT_ID).get(0);
-        ActivityCategoryTreeResponse root = new ActivityCategoryTreeResponse(String.valueOf(rootCategory.getId()),
-            rootCategory.getTitle(), String.valueOf(rootCategory.getParentId()));
-        recursion(root, parentMap);
+        ActivityCategoryTreeResponse root = new ActivityCategoryTreeResponse(ROOT_ID, ROOT_NAME, ROOT_PARENT_ID);
+        if (!CollectionUtils.isEmpty(entityList)) {
+            Map<Long, List<ActivityCategoryEntity>> parentMap = entityList.stream().collect(
+                groupingBy(ActivityCategoryEntity::getParentId));
+            recursion(root, parentMap);
+        }
         return root;
     }
 
@@ -85,12 +87,12 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
     }
 
     private void recursion(ActivityCategoryTreeResponse parent, Map<Long, List<ActivityCategoryEntity>> parentMap) {
-        String parentId = parent.getId();
-        List<ActivityCategoryEntity> children = parentMap.get(Long.valueOf(parentId));
+        Long parentId = parent.getId();
+        List<ActivityCategoryEntity> children = parentMap.get(parentId);
         if (!CollectionUtils.isEmpty(children)) {
             children.forEach(child -> {
-                ActivityCategoryTreeResponse childResponse = new ActivityCategoryTreeResponse(
-                    String.valueOf(child.getId()), child.getTitle(), parentId);
+                ActivityCategoryTreeResponse childResponse =
+                    new ActivityCategoryTreeResponse(child.getId(), child.getTitle(), parentId);
                 recursion(childResponse, parentMap);
                 parent.addChild(childResponse);
             });

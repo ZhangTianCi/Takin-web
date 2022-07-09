@@ -16,15 +16,15 @@ import lombok.Data;
 public class ActivityCategoryTreeResponse {
 
     @ApiModelProperty("分类id")
-    private String id;
+    private Long id;
 
     @ApiModelProperty("分类名称")
     private String title;
 
     @ApiModelProperty("分类父级id")
-    private String parentId;
+    private Long parentId;
 
-    public ActivityCategoryTreeResponse(String id, String title, String parentId) {
+    public ActivityCategoryTreeResponse(Long id, String title, Long parentId) {
         this.id = id;
         this.title = title;
         this.parentId = parentId;
