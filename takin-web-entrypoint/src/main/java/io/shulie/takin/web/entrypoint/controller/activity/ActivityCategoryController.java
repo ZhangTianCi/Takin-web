@@ -94,7 +94,7 @@ public class ActivityCategoryController {
         activityCategoryService.updateCategory(updateRequest);
         OperationLogContextHolder.operationType(OpTypes.UPDATE);
         OperationLogContextHolder.addVars(Vars.CATEGORY_ID, String.valueOf(updateRequest.getTitle()));
-        OperationLogContextHolder.addVars(Vars.CATEGORY_PARENT_ID, updateRequest.getTitle());
+        OperationLogContextHolder.addVars(Vars.CATEGORY_NAME, updateRequest.getTitle());
         return ResponseResult.success("修改成功");
     }
 
