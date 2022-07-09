@@ -13,7 +13,6 @@ import io.shulie.takin.web.data.dao.activity.ActivityCategoryDAO;
 import io.shulie.takin.web.data.mapper.mysql.ActivityCategoryMapper;
 import io.shulie.takin.web.data.model.mysql.ActivityCategoryEntity;
 import io.shulie.takin.web.data.util.MPUtil;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.CollectionUtils;
 
@@ -27,10 +26,10 @@ public class ActivityCategoryDAOImpl extends ServiceImpl<ActivityCategoryMapper,
     }
 
     @Override
-    public boolean hasChildren(Long parentId) {
+    public List<ActivityCategoryEntity> queryChildren(Long parentId) {
         LambdaQueryWrapper<ActivityCategoryEntity> queryWrapper = this.getLambdaQueryWrapper()
             .eq(ActivityCategoryEntity::getParentId, parentId);
-        return SqlHelper.retBool(baseMapper.selectCount(queryWrapper));
+        return baseMapper.selectList(queryWrapper);
     }
 
     @Override
@@ -43,6 +42,13 @@ public class ActivityCategoryDAOImpl extends ServiceImpl<ActivityCategoryMapper,
     @Override
     public ActivityCategoryEntity findById(Long id) {
         return baseMapper.selectById(id);
+    }
+
+    @Override
+    public List<ActivityCategoryEntity> findByIds(List<Long> ids) {
+        LambdaQueryWrapper<ActivityCategoryEntity> queryWrapper = this.getLambdaQueryWrapper()
+            .in(!CollectionUtils.isEmpty(ids), ActivityCategoryEntity::getId, ids);
+        return baseMapper.selectList(queryWrapper);
     }
 
     @Override
@@ -71,9 +77,6 @@ public class ActivityCategoryDAOImpl extends ServiceImpl<ActivityCategoryMapper,
 
     @Override
     public List<Long> startWithRelationCode(String relationCode) {
-        if (!StringUtils.endsWith(relationCode, RELATION_CODE_DELIMITER)) {
-            relationCode += RELATION_CODE_DELIMITER;
-        }
         LambdaQueryWrapper<ActivityCategoryEntity> queryWrapper = this.getLambdaQueryWrapper()
             .select(ActivityCategoryEntity::getId)
             .likeRight(ActivityCategoryEntity::getRelationCode, relationCode);

@@ -1093,5 +1093,11 @@ public class ActivityServiceImpl implements ActivityService {
         return false;
     }
 
+    @Override
+    public void clearCategory(List<Long> categoryIds) {
+        if (CollectionUtils.isNotEmpty(categoryIds)) {
+            businessLinkManageTableMapper.clearCategory(categoryIds);
+        }
+    }
 }
 
