@@ -127,7 +127,12 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
             String relationCode = parentCategory.getRelationCode();
             String sourceSegment = ActivityCategoryDAO.completedEndIfNecessary(relationCode);
             String destSegment = ActivityCategoryDAO.completedEndIfNecessary(String.valueOf(ROOT_ID));
-            resetRelationCode(children, sourceSegment, destSegment);
+            Date now = new Date();
+            children.forEach(category -> {
+                category.setRelationCode(category.getRelationCode().replaceFirst(sourceSegment, destSegment));
+                category.setGmtUpdate(now);
+                category.setParentId(ROOT_ID);
+            });
             List<Long> childrenIds = children.stream().map(ActivityCategoryEntity::getId).collect(Collectors.toList());
             // 下级及递归下级
             List<Long> descendantIds = activityCategoryDAO.startWithRelationCode(relationCode);
@@ -135,23 +140,15 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
             if (!CollectionUtils.isEmpty(descendantIds)) {
                 List<ActivityCategoryEntity> descendants = activityCategoryDAO.findByIds(descendantIds);
                 if (!CollectionUtils.isEmpty(descendants)) {
-                    resetRelationCode(descendants, sourceSegment, destSegment);
+                    descendants.forEach(category -> {
+                        category.setRelationCode(category.getRelationCode().replaceFirst(sourceSegment, destSegment));
+                        category.setGmtUpdate(now);
+                    });
                     children.addAll(descendants);
                 }
             }
             activityCategoryDAO.updateBatchById(children);
             activityService.clearCategory(childrenIds);
-        }
-    }
-
-    private void resetRelationCode(List<ActivityCategoryEntity> categories, String sourceSegment, String destSegment) {
-        if (!CollectionUtils.isEmpty(categories) && !StringUtils.isAnyBlank(sourceSegment, destSegment)) {
-            Date now = new Date();
-            categories.forEach(category -> {
-                category.setRelationCode(category.getRelationCode()
-                    .replaceFirst(sourceSegment, destSegment));
-                category.setGmtUpdate(now);
-            });
         }
     }
 
