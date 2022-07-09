@@ -14,13 +14,15 @@ public interface ActivityCategoryService {
 
     void updateCategory(ActivityCategoryUpdateRequest updateRequest);
 
-    void deleteCategory(Long id);
+    void deleteCategory(Long categoryId);
 
     /**
      * 查找指定节点及其下级节点集合
      *
-     * @param id 节点Id
+     * @param categoryId 节点Id
      * @return 节点及其下级节点集合
      */
-    List<Long> findDescendants(Long id);
+    List<Long> findDescendants(Long categoryId);
+
+    void move(Long fromCategoryId, Long toCategoryId);
 }

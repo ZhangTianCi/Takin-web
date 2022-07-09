@@ -37,7 +37,7 @@ public interface ActivityCategoryDAO extends IService<ActivityCategoryEntity> {
 
     List<ActivityCategoryEntity> list();
 
-    boolean updateRelationCode(Long categoryId, String relationCode);
+    void updateRelationCode(Long categoryId, String relationCode);
 
     List<Long> startWithRelationCode(String relationCode);
 }

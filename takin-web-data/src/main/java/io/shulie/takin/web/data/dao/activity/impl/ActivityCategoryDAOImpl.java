@@ -67,12 +67,12 @@ public class ActivityCategoryDAOImpl extends ServiceImpl<ActivityCategoryMapper,
     }
 
     @Override
-    public boolean updateRelationCode(Long categoryId, String relationCode) {
+    public void updateRelationCode(Long categoryId, String relationCode) {
         ActivityCategoryEntity entity = new ActivityCategoryEntity();
         entity.setId(categoryId);
         entity.setRelationCode(relationCode);
         entity.setGmtUpdate(new Date());
-        return SqlHelper.retBool(baseMapper.updateById(entity));
+        baseMapper.updateById(entity);
     }
 
     @Override

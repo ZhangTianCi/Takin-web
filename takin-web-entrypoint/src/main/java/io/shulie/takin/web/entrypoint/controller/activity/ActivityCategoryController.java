@@ -16,6 +16,7 @@ import io.shulie.takin.web.biz.constant.BizOpConstants.OpTypes;
 import io.shulie.takin.web.biz.constant.BizOpConstants.Vars;
 import io.shulie.takin.web.biz.pojo.request.activity.ActivityCategoryCreateRequest;
 import io.shulie.takin.web.biz.pojo.request.activity.ActivityCategoryDeleteRequest;
+import io.shulie.takin.web.biz.pojo.request.activity.ActivityCategoryMoveRequest;
 import io.shulie.takin.web.biz.pojo.request.activity.ActivityCategoryUpdateRequest;
 import io.shulie.takin.web.biz.pojo.response.activity.ActivityCategoryTreeResponse;
 import io.shulie.takin.web.biz.service.activity.ActivityCategoryService;
@@ -100,7 +101,7 @@ public class ActivityCategoryController {
     @ApiOperation("删除分类")
     @ApiImplicitParams({
         @ApiImplicitParam(name = "业务活动分类id", value = "id", required = true,
-            dataType = "long", paramType = "query")
+            dataType = "long", paramType = "body")
     })
     @ModuleDef(
         moduleName = BizOpConstants.Modules.LINK_CARDING,
@@ -118,5 +119,18 @@ public class ActivityCategoryController {
         OperationLogContextHolder.operationType(OpTypes.DELETE);
         OperationLogContextHolder.addVars(Vars.CATEGORY_ID, String.valueOf(id));
         return ResponseResult.success("删除成功");
+    }
+
+    @ApiOperation("移动分类")
+    @ApiImplicitParams({
+        @ApiImplicitParam(name = "业务活动分类id", value = "from", required = true,
+            dataType = "long", paramType = "body"),
+        @ApiImplicitParam(name = "业务活动分类id", value = "to", required = true,
+            dataType = "long", paramType = "body")
+    })
+    @PutMapping("move")
+    public ResponseResult<String> move(@Valid @RequestBody ActivityCategoryMoveRequest moveRequest) {
+        activityCategoryService.move(moveRequest.getFrom(), moveRequest.getTo());
+        return ResponseResult.success("移动成功");
     }
 }
