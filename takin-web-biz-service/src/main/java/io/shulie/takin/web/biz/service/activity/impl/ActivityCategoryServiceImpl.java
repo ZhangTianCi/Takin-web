@@ -1,6 +1,7 @@
 package io.shulie.takin.web.biz.service.activity.impl;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -137,12 +138,12 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
     // 移动下级节点到根节点
     private void resetChildren(ActivityCategoryEntity parentCategory) {
         // 直接下级
-        List<ActivityCategoryEntity> children = activityCategoryDAO.queryChildren(parentCategory.getId());
+        Long categoryId = parentCategory.getId();
+        List<ActivityCategoryEntity> children = activityCategoryDAO.queryChildren(categoryId);
         if (!CollectionUtils.isEmpty(children)) {
-            List<Long> childrenIds = children.stream().map(ActivityCategoryEntity::getId).collect(Collectors.toList());
             children.forEach(category -> move(category, ROOT));
-            activityService.clearCategory(childrenIds);
         }
+        activityService.clearCategory(Collections.singletonList(categoryId));
     }
 
     /**
